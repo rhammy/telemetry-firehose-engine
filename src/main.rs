@@ -53,6 +53,7 @@ fn parse_packet(input: &[u8; 21]) -> Result<Packet, ParsingError> {
     let (sid, rest) = rest.split_at(4);
     let (data, _) = rest.split_at(8);
 
+    // TODO: use map_err instead of these noisy code blocks.
     // Timestamp
     let timestamp = match bytes_to_u64(ts) {
         Ok(val) => val,
