@@ -65,7 +65,7 @@ impl RobotPathFinder {
                 // Bounds checking
                 if r >= 0 && c >= 0 && r < rows as isize && c < cols as isize
                 {
-                    if !visited[r as usize][c as usize] &&self.grid[r as usize][c as usize] == 0 
+                    if !visited[r as usize][c as usize] && self.grid[r as usize][c as usize] == 0 
                     {
                         visited[r as usize][c as usize] = true;
                         queue.push_back((r,c,dist+1));
