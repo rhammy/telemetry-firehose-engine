@@ -2,6 +2,8 @@ use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use std::error::Error;
 use std::fmt;
+use nom::{IResult, bytes::streaming::take};
+use std::time::Instant;
 
 // Create my own type of error
 #[derive(PartialEq, Debug)]
@@ -55,25 +57,16 @@ fn parse_packet(input: &[u8; 21]) -> Result<Packet, ParsingError> {
 
     // TODO: use map_err instead of these noisy code blocks.
     // Timestamp
-    let timestamp = match bytes_to_u64(ts) {
-        Ok(val) => val,
-        Err(_) => return Err(ParsingError::Timestamp),
-    };
+    let timestamp = bytes_to_u64(ts).map_err(|_| ParsingError::Timestamp)?;
     // Subsystem
     let subsystem = match ReadingType::from_u8(ss[0]) {
         Some(val) => val,
         None => return Err(ParsingError::Subsystem),
     };
     // Sensor ID
-    let sensor_id = match bytes_to_u32(sid) {
-        Ok(val) => val,
-        Err(_) => return Err(ParsingError::SensorId),
-    };
+    let sensor_id = bytes_to_u32(sid).map_err(|_| ParsingError::SensorId)?;
     // Value
-    let value = match bytes_to_f64(data) {
-        Ok(val) => val,
-        Err(_) => return Err(ParsingError::Value),
-    };
+    let value = bytes_to_f64(data).map_err(|_| ParsingError::Value)?;
     // Return packet
     Ok(Packet {
         timestamp,
@@ -82,6 +75,14 @@ fn parse_packet(input: &[u8; 21]) -> Result<Packet, ParsingError> {
         value
     })
 }
+// Using nom to attempt zero-copy parse
+// fn nom_parse(input: &[u8; 21]) -> IResult<&[u8], Packet> {
+//     let (ts, rest) = take(8u8)(input).map_err(|_| ParsingError::Timestamp);
+//     let (ss, rest) = rest.split_at(1);
+//     let (sid, rest) = take(4u8)(rest).map_err(|_| ParsingError::SensorId);
+//     let (data, _) = take(8u8)(rest).map_err(|_| ParsingError::Value);
+
+// }
 
 fn bytes_to_u64(input: &[u8]) -> Result<u64, std::array::TryFromSliceError> {
     Ok(u64::from_be_bytes(input.try_into()?))
@@ -95,11 +96,26 @@ fn bytes_to_u32(input: &[u8]) -> Result<u32, std::array::TryFromSliceError> {
     Ok(u32::from_be_bytes(input.try_into()?))
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+// fn main() -> Result<(), Box<dyn std::error::Error>> {
+//     let bytes = [0x0A, 0xF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,  // timestamp
+//                  0x04,                                           // reading type
+//                  0x00, 0x01, 0x02, 0x0F,                         // sensor id
+//                  0x0A, 0xF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01]; // value
+//     println!("{:?}", parse_packet(&bytes)?);
+//     Ok(())
+// }
+
+fn main() {
+    let iterations = 1_000_000;
     let bytes = [0x0A, 0xF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,  // timestamp
-                 0x05,                                           // reading type
+                 0x04,                                           // reading type
                  0x00, 0x01, 0x02, 0x0F,                         // sensor id
                  0x0A, 0xF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01]; // value
-    println!("{:?}", parse_packet(&bytes)?);
-    Ok(())
+    let start = Instant::now();
+    for _ in 0..iterations {
+        // Use black_box to stop the compiler from being too "smart"
+        let _ = std::hint::black_box(parse_packet(&bytes));
+    }
+    let total = start.elapsed();
+    println!("Total time: {:?}", total);
 }

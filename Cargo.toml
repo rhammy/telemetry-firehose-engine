@@ -4,5 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+nom = "8.0.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
+criterion = "0.5"
+dhat = "0.3"
+
+[[bench]]
+name = "my_benchmarks"
+harness = false
